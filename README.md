@@ -1,0 +1,1 @@
+# GeoDetector_FelipeCordova_202502
