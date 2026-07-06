@@ -1,0 +1,281 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-nodecimaldot]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{url}
+\usepackage{balance}
+\usepackage{tabularx}
+\usepackage{makecell}
+\graphicspath{{figuras/}}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{GEODETECTOR: un pipeline h\'ibrido basado en inteligencia artificial para la detecci\'on, clasificaci\'on y geolocalizaci\'on automatizada de letreros tur\'isticos en rutas y carreteras}
+
+\author{
+\IEEEauthorblockN{Felipe C\'ordova}
+\IEEEauthorblockA{\textit{Instituto de Inform\'atica} \\
+\textit{Universidad Austral de Chile}\\
+Valdivia, Chile \\
+felipe.cordova@alumnos.uach.cl}
+\and
+\IEEEauthorblockN{Luis Veas-Castillo}
+\IEEEauthorblockA{\textit{Instituto de Inform\'atica} \\
+\textit{Universidad Austral de Chile}\\
+Valdivia, Chile \\
+luis.veas@uach.cl}
+\and
+\IEEEauthorblockN{Christian Lazo}
+\IEEEauthorblockA{\textit{Instituto de Inform\'atica}\\
+\textit{Universidad Austral de Chile}\\
+Valdivia, Chile \\
+christian.lazo@uach.cl}
+}
+
+\maketitle
+
+\begin{abstract}
+La informaci\'on disponible en letreros tur\'isticos instalados en rutas rurales y carreteras permanece escasamente integrada a sistemas digitales de inventario territorial. Este art\'iculo presenta GEODETECTOR, un pipeline h\'ibrido que combina detecci\'on de objetos, extracci\'on de regiones de inter\'es, reconocimiento \`optico de caracteres, clasificaci\'on sem\'antica por taxonom\'ia tur\'istica, sincronizaci\'on GPS y visualizaci\'on georreferenciada. La propuesta fue evaluada con videos capturados desde un veh\'iculo en movimiento en tres rutas de la Regi\'on de Los Lagos, Chile, bajo condiciones reales de iluminaci\'on, clima y velocidad. El detector fue entrenado mediante transfer learning sobre un dataset propio de 2.000 im\'agenes etiquetadas de letreros capturados en Chile y Argentina. En la evaluaci\'on experimental, el modelo alcanz\'o Precisi\'on entre 0,77 y 0,91, Recall entre 0,50 y 0,74 y F1-score entre 0,61 y 0,76, mientras que el reconocimiento de texto obtuvo un Character Error Rate entre 0,08 y 0,27. La evaluaci\'on end-to-end mostr\'o que el pipeline complet\'o autom\'aticamente la detecci\'on, lectura, clasificaci\'on y georreferenciaci\'on del 57,1\% de los letreros tur\'isticos correctamente detectados en la configuraci\'on original de captura. Los resultados evidencian la viabilidad de utilizar visi\'on artificial para apoyar el inventario de infraestructura tur\'istica vial en entornos no controlados.
+\end{abstract}
+
+\begin{IEEEkeywords}
+visi\'on artificial, YOLO, OCR, georreferenciaci\'on, letreros tur\'isticos, inteligencia artificial, rutas rurales.
+\end{IEEEkeywords}
+
+\section{Introducci\'on}
+
+Las rutas y carreteras rurales concentran una cantidad relevante de informaci\'on territorial que no siempre se encuentra disponible en plataformas digitales. En particular, muchos emprendimientos tur\'isticos, servicios de alimentaci\'on, alojamientos y actividades recreativas se anuncian mediante letreros instalados al borde del camino. Estos elementos cumplen una funci\'on informativa para los viajeros, pero tambi\'en constituyen una fuente de datos potencialmente valiosa para municipios, organismos de turismo y planificadores territoriales. Sin embargo, su registro suele depender de levantamientos manuales, costosos y dif\'iciles de actualizar.
+
+Los avances recientes en detecci\'on de objetos y reconocimiento de texto en escenas naturales permiten abordar este problema desde una perspectiva automatizada. Modelos de detecci\'on como YOLO han demostrado alta eficiencia en escenarios viales y aplicaciones de transporte inteligente \cite{letreros-transito-pare-semaforo-1,yolo-vehiculos}. Asimismo, los sistemas de reconocimiento \`optico de caracteres (OCR) y Scene Text Recognition (STR) han ampliado la capacidad de extraer texto desde im\'agenes complejas \cite{soni2025performance,ocr-curvo}. No obstante, la se\~nal\'etica tur\'istica rural presenta dificultades particulares: variabilidad visual, tipograf\'ias no estandarizadas, materiales artesanales, deterioro f\'isico, bajo contraste, oclusiones por vegetaci\'on, condiciones clim\'aticas variables y captura desde veh\'iculos en movimiento.
+
+La literatura sobre se\~nales de tr\'ansito se concentra principalmente en se\~nal\'etica regulada, con colores, formas y dise\~nos normalizados \cite{TT100K-Dataset,gtsdb-dataset}. En cambio, los letreros tur\'isticos rurales y comerciales no estandarizados han sido escasamente estudiados, especialmente en contextos latinoamericanos. Adem\'as, la detecci\'on visual por s\'i sola no entrega la posici\'on geogr\'afica real del objeto, por lo que es necesario sincronizar el video con datos de geolocalizaci\'on \cite{roboflow-georeferencing}. Esta integraci\'on entre visi\'on artificial, OCR, clasificaci\'on sem\'antica y georreferenciaci\'on constituye el foco de este trabajo.
+
+Este art\'iculo presenta GEODETECTOR, un pipeline h\'ibrido orientado a detectar, interpretar y geolocalizar letreros tur\'isticos capturados desde veh\'iculos en movimiento. La propuesta se valida mediante videos reales adquiridos en rutas de la Regi\'on de Los Lagos, Chile, considerando distintas resoluciones, tasas de cuadros por segundo y condiciones clim\'aticas. Las principales contribuciones son: (i) la construcci\'on de un dataset propio de 2.000 im\'agenes etiquetadas de letreros rurales, urbanos y tur\'isticos; (ii) el dise\~no de un pipeline end-to-end que integra detecci\'on, OCR, clasificaci\'on sem\'antica y geolocalizaci\'on; y (iii) la evaluaci\'on experimental en condiciones reales, incluyendo una medici\'on integral que muestra que el pipeline logra completar autom\'aticamente el flujo para el 57,1\% de los letreros tur\'isticos correctamente detectados.
+
+\section{Trabajos relacionados}
+
+La detecci\'on de objetos en video ha evolucionado de manera significativa gracias a modelos profundos de una y dos etapas. Faster R-CNN prioriza precisi\'on mediante propuestas de regi\'on \cite{rnn-faster}, mientras que la familia YOLO privilegia velocidad de inferencia y ha sido ampliamente adoptada en aplicaciones vehiculares \cite{comparacion-yolo-rnn,yolo-vehiculos}. Sin embargo, distintos trabajos han reportado degradaci\'on de desempe\~no ante lluvia, niebla, baja iluminaci\'on y ruido visual \cite{yolo-escenarios-naturales}. Estos factores son especialmente relevantes cuando los objetos aparecen durante pocos segundos y a distancias variables.
+
+En reconocimiento de texto, el OCR tradicional ha sido utilizado en dominios como banca, compras en l\'inea y salud \cite{ocr-banco,ocr-compras-en-linea,ocr-salud}. En escenas naturales, el problema es m\'as complejo debido a fondos no uniformes, perspectivas, rotaciones, tipograf\'ias diversas y oclusiones. Los enfoques STR han mejorado la lectura de texto irregular, pero muchos benchmarks se concentran en se\~nal\'etica urbana o texto en ingl\'es, sin representar adecuadamente letreros artesanales de rutas rurales latinoamericanas \cite{icdar,ocr-curvo}.
+
+Los datasets de se\~nales de tr\'ansito, como TT-100K y GTSDB, han permitido avances importantes en detecci\'on de se\~nal\'etica regulada \cite{TT100K-Dataset,gtsdb-dataset}. No obstante, sus clases y distribuciones visuales difieren del dominio tur\'istico rural, donde predominan letreros informales, materiales heterog\'eneos y ausencia de est\'andares gr\'aficos. Esta diferencia produce un problema de cambio de dominio o \textit{domain shift}, frente al cual el transfer learning es una alternativa efectiva cuando se dispone de datos espec\'ificos limitados \cite{domain-shift,transfer-learning,transfer-learning-yolo}. GEODETECTOR aborda esta brecha mediante un dataset propio y un pipeline integrado que combina visi\'on, texto y geolocalizaci\'on.
+
+\section{Metodolog\'ia}
+
+\subsection{Visi\'on general del pipeline}
+
+GEODETECTOR se organiza en dos etapas principales, como se muestra en la Fig.~\ref{fig:pipeline}. La primera etapa construye el modelo de detecci\'on mediante un dataset etiquetado, su divisi\'on en entrenamiento, validaci\'on y prueba, y el fine-tuning de un modelo YOLO11m. La segunda etapa implementa el modelo en un escenario de captura vehicular: se procesa el video, se sincroniza con la traza GPS, se extraen regiones de inter\'es (ROI), se aplica OCR, se clasifica sem\'anticamente el contenido textual y se visualizan los resultados en un mapa.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.94\textwidth]{figura2.pdf}
+\caption{Pipeline general de GEODETECTOR. La etapa 1 construye y valida el modelo de detecci\'on; la etapa 2 integra captura, sincronizaci\'on GPS, OCR, clasificaci\'on sem\'antica y visualizaci\'on georreferenciada.}
+\label{fig:pipeline}
+\end{figure*}
+
+\subsection{Construcci\'on del dataset}
+
+El dataset fue construido a partir de recorridos realizados entre enero y septiembre de 2025 en cinco regiones de Chile y una localidad de Argentina. Las im\'agenes fueron capturadas con un smartphone Samsung Galaxy S23 en contextos urbanos, rurales y tur\'isticos, considerando variabilidad de distancia, \`angulo, iluminaci\'on, materialidad y estado de conservaci\'on de los letreros. Cada imagen fue etiquetada manualmente con Label Studio \cite{labelstudio2026}, usando una clase \'unica: \textit{signboard}. Las etiquetas fueron exportadas en formato YOLO, y la metadata se consolid\'o mediante scripts en Python \cite{python2026}. Para resguardar privacidad, se difuminaron rostros, patentes, c\'odigos QR y n\'umeros telef\'onicos visibles mediante GIMP \cite{gimp2026}. El dataset fue publicado en IEEE DataPort \cite{ieee-dataset}.
+
+\begin{table}[t]
+\caption{Distribuci\'on geogr\'afica de las im\'agenes recolectadas.}
+\label{tab:dataset}
+\centering
+\footnotesize
+\begin{tabular}{p{1.8cm}p{4.1cm}r}
+\toprule
+Regi\'on & Localidades principales & Im\'agenes \\
+\midrule
+La Araucan\'ia & Puc\'on, Villarrica, Caburgua, Licanray, Loncoche & 979 \\
+Los Lagos & Puerto Montt, Frutillar, Calbuco, Puerto Varas & 542 \\
+Los R\'ios & Valdivia, Panguipulli, Lago Ranco, Lanco & 467 \\
+O'Higgins & Quinta de Tilcoco, Rancagua & 7 \\
+El Maule & Colb\'un, San Clemente & 2 \\
+Argentina & San Carlos de Bariloche & 3 \\
+\midrule
+Total & -- & 2.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Modelo de detecci\'on}
+
+Se utiliz\'o YOLO11m como modelo base, seleccionando la variante \textit{medium} por su equilibrio entre capacidad de representaci\'on y generalizaci\'on para el tama\~no del dataset. Se aplic\'o transfer learning a partir de pesos preentrenados y fine-tuning sobre el dataset propio, con im\'agenes de entrada de 640$\times$640 p\'ixeles, 50 \'epocas y parada temprana con paciencia de 5 \'epocas, siguiendo la documentaci\'on de Ultralytics \cite{yolo11_ultralytics}. La divisi\'on de datos fue 70\% entrenamiento, 15\% validaci\'on y 15\% prueba. La Tabla~\ref{tab:train_metrics} resume el desempe\~no final del detector en validaci\'on, evitando incluir curvas de entrenamiento para ajustarse al l\'imite de extensi\'on del art\'iculo.
+
+\begin{table}[t]
+\caption{M\'etricas resumidas del modelo YOLO11m personalizado.}
+\label{tab:train_metrics}
+\centering
+\begin{tabular}{lc}
+\toprule
+M\'etrica & Valor \\
+\midrule
+Precisi\'on & 0,88 \\
+Recall & 0,83 \\
+mAP@50 & 0,92 \\
+mAP@50:95 & 0,74 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La Fig.~\ref{fig:detecciones} muestra ejemplos de detecciones obtenidas sobre im\'agenes del conjunto de prueba. Estas detecciones permiten observar la respuesta del modelo ante diversidad de formas, materiales, distancias y condiciones de iluminaci\'on.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\columnwidth]{figura5.pdf}
+\caption{Ejemplos de detecciones realizadas por el modelo YOLO11m personalizado sobre letreros con distinta apariencia visual.}
+\label{fig:detecciones}
+\end{figure}
+
+\subsection{OCR, taxonom\'ia y geolocalizaci\'on}
+
+Cada detecci\'on con confianza superior a 0,5 se recorta como ROI y se procesa mediante transformaci\'on a escala de grises y thresholding, t\'ecnica utilizada para mejorar el contraste previo al OCR \cite{thresholding-para-mejorar-ocr}. El reconocimiento de texto se realiza con PaddleOCR \cite{paddleocr,paddleocr2}, reteniendo resultados con confianza superior a 0,5. Luego, el texto se normaliza y se compara contra una taxonom\'ia de palabras clave basada en servicios tur\'isticos definidos por organismos chilenos \cite{taxonomia-gobierno}. La comparaci\'on usa coincidencia exacta y similitud difusa para tolerar errores de OCR \cite{fuzzy-matching}. La Tabla~\ref{tab:taxonomia} resume la taxonom\'ia utilizada.
+
+\begin{table}[t]
+\caption{Taxonom\'ia de clasificaci\'on sem\'antica de letreros tur\'isticos.}
+\label{tab:taxonomia}
+\centering
+\footnotesize
+\begin{tabular}{p{1.7cm}cp{4.1cm}}
+\toprule
+Categor\'ia & Palabras clave & Ejemplos \\
+\midrule
+Alojamiento & 17 & caba\~na, hostal, hotel, hospedaje, apart hotel \\
+Alimentaci\'on & 73 & restaurant, picada, almuerzos, minimarket, comida casera \\
+Recreativa & 56 & rafting, cabalgatas, trekking, playa, artesan\'ias \\
+Otros & -- & venta de terrenos, talleres, tr\'ansito u otra se\~nal\'etica no tur\'istica \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La geolocalizaci\'on se obtiene sincronizando temporalmente el video con una traza GPX registrada mediante GeoTracker \cite{geotracker}. Se extrae la hora de finalizaci\'on y duraci\'on del video con pymediainfo \cite{pymediainfo}; luego se calcula la hora de inicio como $t_{inicio}=t_{fin}-D$, donde $D$ es la duraci\'on en segundos. La traza GPS se filtra a un punto por segundo para asociar cada frame procesado con su coordenada geogr\'afica. Los resultados se consolidan con Pandas \cite{pandas} y se visualizan en un mapa interactivo.
+
+\section{Configuraci\'on experimental}
+
+El pipeline fue ejecutado en el supercomputador Patag\'on de la Universidad Austral de Chile \cite{patagon}. Para entrenamiento, inferencia y OCR se utilizaron recursos GPU, principalmente NVIDIA L40, mientras que tareas de sincronizaci\'on y consolidaci\'on fueron ejecutadas con menor demanda computacional. El desarrollo se realiz\'o en Python, empleando Ultralytics, PaddleOCR, OpenCV \cite{opencv}, Pandas y herramientas auxiliares como FFmpeg para generar variantes de resoluci\'on y FPS \cite{ffmpeg}.
+
+La evaluaci\'on utiliz\'o tres videos reales capturados desde un veh\'iculo a velocidades entre 50 y 70 km/h. Cada video original fue grabado en 1080p a 30 FPS y transformado en tres variantes: 1080p a 15 FPS, 720p a 30 FPS y 720p a 15 FPS. En total, se evaluaron 12 escenarios. La Tabla~\ref{tab:escenarios} resume las condiciones de captura. LR corresponde al total de letreros reales observados y LRT a los letreros reales tur\'isticos seg\'un la taxonom\'ia.
+
+\begin{table*}[t]
+\caption{Escenarios experimentales evaluados.}
+\label{tab:escenarios}
+\centering
+\footnotesize
+\begin{tabular}{llcccccccc}
+\toprule
+Video & Sector & Hora & Duraci\'on & Periodo & Clima & Velocidad & LR & LRT & Configuraciones \\
+\midrule
+V1 & Carretera Austral & 11:13 & 4:03 min & Ma\~nana & Lluvia & 50--70 km/h & 87 & 23 & 1080p/720p; 30/15 FPS \\
+V2 & R\'io Maull\'in & 10:17 & 4:13 min & Ma\~nana & Neblina & 50--70 km/h & 34 & 4 & 1080p/720p; 30/15 FPS \\
+V3 & Camino a Ensenada & 16:52 & 5:58 min & Tarde & Despejado & 50--70 km/h & 91 & 19 & 1080p/720p; 30/15 FPS \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Para detecci\'on se calcularon Precisi\'on, Recall y F1-score a partir de verdaderos positivos (TP), falsos positivos (FP) y falsos negativos (FN), usando un conteo manual frame a frame como ground truth \cite{ibm_ground_truth}. Para OCR se utiliz\'o Character Error Rate (CER), calculado con distancia de edici\'on de Levenshtein \cite{levenshtein1966binary,transkribus-cer}.
+
+\section{Resultados}
+
+\subsection{Detecci\'on y OCR}
+
+La Tabla~\ref{tab:resumen_resultados} resume el desempe\~no por video y configuraci\'on. La Precisi\'on se mantiene relativamente estable entre 0,77 y 0,91, lo que indica que el modelo controla razonablemente los falsos positivos en condiciones reales. El Recall presenta mayor variabilidad, entre 0,50 y 0,74, reflejando la dificultad de detectar letreros que aparecen brevemente en escena o bajo degradaci\'on visual. El F1-score fluct\'ua entre 0,61 y 0,76. En OCR, los valores de CER var\'ian entre 0,08 y 0,27, con mejores resultados en 1080p a 30 FPS.
+
+\begin{table*}[t]
+\caption{Resumen de resultados de detecci\'on y OCR por configuraci\'on.}
+\label{tab:resumen_resultados}
+\centering
+\footnotesize
+\begin{tabular}{cccccccc}
+\toprule
+Video & Resoluci\'on & FPS & Precisi\'on & Recall & F1-score & CER prom. & Interpretaci\'on OCR \\
+\midrule
+V1 & 1080p & 30 & 0,87 & 0,63 & 0,73 & 0,13 & Aceptable \\
+V1 & 1080p & 15 & 0,85 & 0,60 & 0,70 & 0,23 & Deficiente \\
+V1 & 720p & 30 & 0,91 & 0,60 & 0,72 & 0,16 & Aceptable \\
+V1 & 720p & 15 & 0,88 & 0,52 & 0,65 & 0,22 & Deficiente \\
+V2 & 1080p & 30 & 0,84 & 0,62 & 0,71 & 0,08 & Bueno \\
+V2 & 1080p & 15 & 0,78 & 0,74 & 0,76 & 0,27 & Deficiente \\
+V2 & 720p & 30 & 0,86 & 0,53 & 0,66 & 0,16 & Aceptable \\
+V2 & 720p & 15 & 0,77 & 0,50 & 0,61 & 0,16 & Aceptable \\
+V3 & 1080p & 30 & 0,85 & 0,63 & 0,72 & 0,10 & Bueno \\
+V3 & 1080p & 15 & 0,81 & 0,67 & 0,73 & 0,20 & Aceptable \\
+V3 & 720p & 30 & 0,82 & 0,55 & 0,66 & 0,24 & Deficiente \\
+V3 & 720p & 15 & 0,89 & 0,59 & 0,72 & 0,21 & Deficiente \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+En t\'erminos generales, la reducci\'on a 15 FPS afecta tanto la detecci\'on como el OCR, especialmente cuando los letreros aparecen durante pocos frames o cuando existen lluvia, neblina o desenfoque por movimiento. La resoluci\'on tambi\'en influye, aunque el efecto observado en OCR sugiere que la disponibilidad temporal de frames n\'itidos es tan importante como la cantidad de p\'ixeles. La configuraci\'on 1080p a 30 FPS presenta el mejor equilibrio general, con valores de OCR buenos o aceptables en los tres videos.
+
+\subsection{Evaluaci\'on end-to-end}
+
+La evaluaci\'on integral considera el flujo completo que recibe el usuario: detecci\'on del letrero, extracci\'on de texto, clasificaci\'on sem\'antica, evaluaci\'on de calidad informativa y georreferenciaci\'on. En la configuraci\'on original 1080p a 30 FPS, V1 conten\'ia 23 letreros tur\'isticos reales, de los cuales 21 fueron correctamente detectados; 11 superaron el filtro de confianza OCR y fueron evaluados y clasificados. En V2, 3 de 4 letreros tur\'isticos fueron detectados y los 3 pasaron el filtro OCR. En V3, 18 de 19 letreros tur\'isticos fueron detectados, pero solo 10 superaron el umbral OCR.
+
+En conjunto, el pipeline logr\'o evaluar y clasificar exitosamente 24 de 42 letreros tur\'isticos correctamente detectados, lo que corresponde a una tasa end-to-end de 57,1\%. Este resultado muestra que la etapa de OCR act\'ua como el principal filtro del sistema. Aunque el detector identifica la mayor parte de los letreros tur\'isticos visibles, cerca de la mitad de ellos puede perderse antes de la clasificaci\'on final debido a baja nitidez, deterioro, \`angulo de captura, reflejos o desenfoque por movimiento.
+
+La Fig.~\ref{fig:endtoend} ilustra un caso exitoso de procesamiento completo: el video y la traza GPS se sincronizan, el modelo detecta el letrero, se extrae la ROI, el OCR recupera texto con alta confianza, la taxonom\'ia asigna una categor\'ia tur\'istica y el resultado se visualiza sobre un mapa con coordenadas asociadas.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.94\textwidth]{figura7.pdf}
+\caption{Ejemplo de ejecuci\'on end-to-end de GEODETECTOR sobre un letrero tur\'istico capturado en ruta.}
+\label{fig:endtoend}
+\end{figure*}
+
+\subsection{Visualizaci\'on georreferenciada}
+
+Los resultados consolidados fueron representados en un mapa interactivo. La Fig.~\ref{fig:mapa} muestra la distribuci\'on geogr\'afica de las detecciones obtenidas en los tres videos. Cada punto representa un letrero detectado y georreferenciado; al seleccionarlo, el usuario puede revisar coordenadas, categor\'ia, texto reconocido, confianza de detecci\'on, condiciones de captura y calidad informativa. Este componente permite transformar detecciones individuales en una herramienta de apoyo para inventarios territoriales.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\columnwidth]{figura8.pdf}
+\caption{Mapa interactivo con la distribuci\'on geogr\'afica de las detecciones obtenidas en los tres videos de prueba.}
+\label{fig:mapa}
+\end{figure}
+
+\section{Discusi\'on}
+
+Los resultados evidencian que GEODETECTOR es viable para detectar y geolocalizar letreros tur\'isticos en condiciones reales de captura vehicular. La Precisi\'on promedio obtenida en video se mantiene cercana al desempe\~no de validaci\'on del detector, lo que respalda la decisi\'on de entrenar un modelo especializado en lugar de depender de clases generales de YOLO. Esta observaci\'on es consistente con trabajos que muestran degradaci\'on por cambio de dominio cuando el dataset de entrenamiento no representa el escenario de aplicaci\'on \cite{domain-shift,dataset-no-existentes}.
+
+La ca\'ida en Recall respecto del conjunto de validaci\'on era esperable, ya que la evaluaci\'on en video introduce factores ausentes en im\'agenes est\'aticas: movimiento del veh\'iculo, tiempo limitado de aparici\'on del letrero, vibraci\'on de c\'amara, lluvia, neblina y oclusi\'on parcial. Estos efectos han sido reportados previamente en an\'alisis de robustez de detectores bajo condiciones clim\'aticas realistas \cite{yolo-escenarios-naturales}. En este sentido, el aporte del trabajo no est\'a en obtener una detecci\'on perfecta, sino en cuantificar de manera transparente el desempe\~no de un pipeline completo bajo condiciones no controladas.
+
+El m\'odulo OCR constituye el principal cuello de botella. Aunque PaddleOCR permite leer texto en m\'ultiples idiomas y escenas complejas, su desempe\~no depende fuertemente de la calidad de la ROI recibida. La tasa end-to-end de 57,1\% muestra que detectar el letrero no basta: tambi\'en se requiere disponer de frames suficientemente n\'itidos para extraer texto útil. Las configuraciones de 1080p a 30 FPS ofrecen mejores condiciones para recuperar texto, mientras que 15 FPS reduce la probabilidad de seleccionar un frame legible.
+
+La Fig.~\ref{fig:limitaciones} muestra ejemplos de limitaciones observadas. Algunos falsos positivos se producen por objetos rectangulares o planos, como laterales de camiones, banderas o estructuras viales. Tambi\'en se detectan se\~nales de tr\'ansito convencionales que comparten rasgos visuales con letreros, pero que no pertenecen al dominio tur\'istico. Estos casos sugieren que futuras versiones podr\'ian incorporar una segunda etapa de filtrado visual, modelos multimodales o clasificadores espec\'ificos para distinguir se\~nal\'etica tur\'istica de otros objetos viales.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.98\columnwidth]{figura9.pdf}
+\caption{Ejemplos de limitaciones: falsos positivos y detecciones sobre objetos visualmente similares a letreros.}
+\label{fig:limitaciones}
+\end{figure}
+
+\section{Conclusiones}
+
+Este art\'iculo present\'o GEODETECTOR, un pipeline h\'ibrido para detecci\'on, reconocimiento de texto, clasificaci\'on sem\'antica y georreferenciaci\'on de letreros tur\'isticos capturados desde veh\'iculos en movimiento. La propuesta integra un detector YOLO11m entrenado con un dataset propio de 2.000 im\'agenes, procesamiento de ROI, OCR, una taxonom\'ia tur\'istica basada en palabras clave y sincronizaci\'on GPS para visualizaci\'on en mapa.
+
+Los experimentos realizados sobre tres rutas reales de la Regi\'on de Los Lagos muestran que el detector alcanza Precisi\'on entre 0,77 y 0,91, Recall entre 0,50 y 0,74 y F1-score entre 0,61 y 0,76. El OCR obtuvo valores de CER entre 0,08 y 0,27, confirmando que la lectura de texto en movimiento es la etapa m\'as sensible del pipeline. En evaluaci\'on end-to-end, el sistema complet\'o autom\'aticamente el flujo para el 57,1\% de los letreros tur\'isticos correctamente detectados.
+
+Como trabajo futuro se proyecta ampliar el dataset con nuevas regiones, evaluar t\'ecnicas de super-resoluci\'on y correcci\'on de desenfoque, desarrollar una aplicaci\'on m\'ovil que capture video y GPS de manera integrada, y migrar el almacenamiento de resultados hacia una base de datos geoespacial. Tambi\'en resulta relevante explorar procesamiento en el borde para aproximar el pipeline a una ejecuci\'on en tiempo real desde el veh\'iculo.
+
+\section*{Agradecimientos}
+
+Se agradece el apoyo de la Universidad Austral de Chile y del supercomputador Patag\'on UACh para la ejecuci\'on de los experimentos. Asimismo, se agradece la colaboraci\'on en el proceso de etiquetado manual del dataset.
+
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{sample}
+
+\end{document}
