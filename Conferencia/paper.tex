@@ -43,7 +43,7 @@ Valdivia, Chile \\
 \IEEEauthorblockA{\textit{Instituto de Informática} \\
 \textit{Universidad Austral de Chile}\\
 Valdivia, Chile \\
-\texttt{luis.veasc@uach.cl}}
+\texttt{luis.veasc@inf.uach.cl}}
 \and
 \IEEEauthorblockN{Christian Lazo}
 \IEEEauthorblockA{\textit{Instituto de Informática}\\
@@ -239,8 +239,8 @@ Argentina & San Carlos de Bariloche & 3 \\
 
 Se utilizó YOLO11m como modelo base, seleccionando la variante 
 \textit{medium} por su equilibrio entre capacidad de representación y 
-generalización para el tamaño del dataset. Se aplicó transfer learning a partir de pesos preentrenados y 
-fine-tuning sobre el dataset propio. Las imágenes de entrada fueron 
+generalización para el tamaño del dataset. Se aplicó transfer learning a partir de pesos
+preentrenados y fine-tuning sobre el dataset propio. Las imágenes de entrada fueron 
 configuradas a 640$\times$640 píxeles, tamaño al que YOLO redimensiona 
 internamente mediante \textit{letterboxing} \cite{letterbox-yolo}, 
 preservando la relación de aspecto de las imágenes originales del 
@@ -250,8 +250,10 @@ paciencia de 5 épocas. La división de datos fue 70\% entrenamiento,
 15\% validación y 15\% prueba, resultando en 1.400, 300 y 300 imágenes
 respectivamente. La Tabla~\ref{tab:train_metrics} resume el 
 desempeño final del detector en validación, evitando incluir curvas de 
-entrenamiento para ajustarse al límite de extensión del artículo.
-
+entrenamiento para ajustarse al límite de extensión del presente artículo. Este proceso 
+de entrenamiento se ejecuta en el supercomputador Patagón de la Universidad Austral de Chile \cite{patagon},
+y tuvo un tiempo de cómputo de 23 minutos con 28 segundos (0.391 horas) 
+utilizando una GPU NVIDIA L40.
 \begin{table}[!t]
 \caption{Métricas resumidas del modelo YOLO11m personalizado.}
 \label{tab:train_metrics}
@@ -282,11 +284,15 @@ y condiciones de iluminación.
 
 \subsection{OCR, taxonomía y geolocalización}
 
-Cada detección con confianza superior a 0,5 se recorta como ROI y se 
-procesa mediante transformación a escala de grises y thresholding, técnica
-utilizada para mejorar el contraste previo al OCR 
-\cite{thresholding-para-mejorar-ocr}. El reconocimiento de texto se 
-realiza con PaddleOCR \cite{paddleocr,paddleocr2}, reteniendo resultados 
+Una vez seleccionada la detección de mayor confianza para cada letrero mediante el 
+tracking por apariencia implementado en la Etapa 2 de Implementación del
+Modelo de Detección de Letreros, esta se recorta como ROI y se procesa mediante transformación a 
+escala de grises y thresholding, técnica utilizada para mejorar el contraste previo 
+al OCR \cite{thresholding-para-mejorar-ocr}. Dicho tracking opera sobre un fotograma 
+por segundo del video, igual que los fotogramas enviados al modelo de detección, y 
+asocia las detecciones de un mismo letrero mediante comparación de histogramas de 
+color en el espacio HSV \cite{hsv-histogram-tracking, gil2004deteccion}. El reconocimiento de 
+texto se realiza con PaddleOCR \cite{paddleocr,paddleocr2}, reteniendo resultados 
 con confianza superior a 0,5. Luego, el texto se normaliza y se compara 
 contra una taxonomía de palabras clave basada en servicios turísticos 
 definidos por el Servicio Nacional del Turismo de Chile 
@@ -356,12 +362,70 @@ V3 & Camino a Ensenada & 16:52 & 5:58 min & Tarde & Despejado & 50--70 km/h & 91
 \end{tabular}
 \end{table*}
 
-Para detección se calcularon Precisión, Recall y F1-score a partir de 
-verdaderos positivos (TP), falsos positivos (FP) y falsos negativos (FN), 
-usando un conteo manual frame a frame como ground truth 
-\cite{ibm_ground_truth}. Para OCR se utilizó Character Error Rate (CER), 
-calculado con distancia de edición de Levenshtein 
-\cite{levenshtein1966binary,transkribus-cer}.
+Para la tarea de detección se calcularon las métricas de Precisión, Recall y F1-score 
+a partir de los verdaderos positivos (TP), falsos positivos (FP) y falsos negativos (FN), 
+utilizando como ground truth un conteo manual frame a frame realizado por el autor 
+\cite{ibm_ground_truth}, sobre la base de la taxonomía presentada en la 
+Tabla~\ref{tab:taxonomia}. Para evitar el conteo múltiple de un mismo letrero detectado 
+en frames consecutivos, se realizó un seguimiento visual manual de cada letrero de forma 
+individual a lo largo del video, asociando todas sus detecciones a una única instancia 
+para efectos de la evaluación. Estas métricas se definen según las ecuaciones 
+\ref{eq:precision}, \ref{eq:recall} y \ref{eq:f1}:
+
+\begin{equation}
+\text{Precisión} = \frac{TP}{TP + FP}
+\label{eq:precision}
+\end{equation}
+
+\begin{equation}
+\text{Recall} = \frac{TP}{TP + FN}
+\label{eq:recall}
+\end{equation}
+
+\begin{equation}
+F1\text{-score} = 2 \cdot \frac{\text{Precisión} \cdot \text{Recall}}{\text{Precisión} + \text{Recall}}
+\label{eq:f1}
+\end{equation}
+
+Para evaluar el desempeño del reconocimiento óptico de caracteres (OCR) se utilizó 
+Character Error Rate (CER), calculado a partir de la distancia de edición de 
+Levenshtein \cite{levenshtein1966binary,transkribus-cer} entre el texto reconocido 
+por el modelo y el texto de referencia. Este texto de referencia se obtuvo mediante 
+una transcripción manual del contenido textual de cada letrero identificado en el 
+ground truth de detección, la cual fue comparada con la salida del OCR utilizando 
+el algoritmo de Levenshtein, según se define en la ecuación \ref{eq:cer}:
+
+\begin{equation}
+CER = \frac{S + D + I}{N}
+\label{eq:cer}
+\end{equation}
+
+\noindent donde $S$, $D$ e $I$ corresponden al número de sustituciones, eliminaciones 
+e inserciones de caracteres necesarias para transformar el texto reconocido en el texto 
+de referencia, y $N$ es el número total de caracteres del texto de referencia.
+
+Para la interpretación de los resultados se definen rangos de referencia adaptados del 
+estándar utilizado en plataformas de reconocimiento de texto \cite{transkribus-cer}. 
+La Tabla~\ref{tab:cer_interpretacion} resume las categorías de interpretación 
+utilizadas según el valor de CER obtenido.
+
+\begin{table}[!t]
+\caption{Interpretación de los valores de CER utilizados como referencia.}
+\label{tab:cer_interpretacion}
+\centering
+\footnotesize
+\begin{tabular}{cc p{3.6cm}}
+\toprule
+Rango de CER & Interpretación & Descripción \\
+\midrule
+$CER = 0$ & Perfecto (P) & Reconocimiento perfecto, sin errores de OCR. \\
+$0 < CER \leq 0{,}05$ & Excelente (E) & Desempeño excelente, con muy pocos errores de reconocimiento. \\
+$0{,}05 < CER \leq 0{,}10$ & Bueno (B) & Desempeño bueno y suficiente para la mayoría de aplicaciones prácticas. \\
+$0{,}10 < CER \leq 0{,}20$ & Aceptable (A) & Desempeño aceptable, aunque con errores perceptibles en el texto reconocido. \\
+$CER > 0{,}20$ & Deficiente (D) & Desempeño deficiente, con una alta cantidad de errores de OCR. \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Resultados}
 
@@ -383,19 +447,19 @@ y 0,27, con mejores resultados en 1080p a 30 FPS.
 \footnotesize
 \begin{tabular}{cccccccc}
 \toprule
-Video & Resolución & FPS & Precisión & Recall & F1-score & CER prom. & Interpretación OCR \\
+Video & Resolución & FPS & Precisión & Recall & F1-score & CER prom. & Interpretación prom. CER\\
 \midrule
-V1 & 1080p & 30 & 0,87 & 0,63 & 0,73 & 0,13 & Aceptable \\
-V1 & 1080p & 15 & 0,85 & 0,60 & 0,70 & 0,23 & Deficiente \\
-V1 & 720p & 30 & 0,91 & 0,60 & 0,72 & 0,16 & Aceptable \\
-V1 & 720p & 15 & 0,88 & 0,52 & 0,65 & 0,22 & Deficiente \\
-V2 & 1080p & 30 & 0,84 & 0,62 & 0,71 & 0,08 & Bueno \\
-V2 & 1080p & 15 & 0,78 & 0,74 & 0,76 & 0,27 & Deficiente \\
-V2 & 720p & 30 & 0,86 & 0,53 & 0,66 & 0,16 & Aceptable \\
-V2 & 720p & 15 & 0,77 & 0,50 & 0,61 & 0,16 & Aceptable \\
-V3 & 1080p & 30 & 0,85 & 0,63 & 0,72 & 0,10 & Bueno \\
-V3 & 1080p & 15 & 0,81 & 0,67 & 0,73 & 0,20 & Aceptable \\
-V3 & 720p & 30 & 0,82 & 0,55 & 0,66 & 0,24 & Deficiente \\
+V1 & 1080p & 30  & 0,87 & 0,63 & 0,73 & 0,13 & Aceptable \\
+V1 & 1080p & 15  & 0,85 & 0,60 & 0,70 & 0,23 & Deficiente \\
+V1 & 720p & 30  & 0,91 & 0,60 & 0,72 & 0,16 & Aceptable \\
+V1 & 720p & 15  & 0,88 & 0,52 & 0,65 & 0,22 & Deficiente \\
+V2 & 1080p & 30  & 0,84 & 0,62 & 0,71 & 0,08 & Bueno \\
+V2 & 1080p & 15  & 0,78 & 0,74 & 0,76 & 0,27 & Deficiente \\
+V2 & 720p & 30  & 0,86 & 0,53 & 0,66 & 0,16 & Aceptable \\
+V2 & 720p & 15  & 0,77 & 0,50 & 0,61 & 0,16 & Aceptable \\
+V3 & 1080p & 30  & 0,85 & 0,63 & 0,72 & 0,10 & Bueno \\
+V3 & 1080p & 15  & 0,81 & 0,67 & 0,73 & 0,20 & Aceptable \\
+V3 & 720p & 30  & 0,82 & 0,55 & 0,66 & 0,24 & Deficiente \\
 V3 & 720p & 15 & 0,89 & 0,59 & 0,72 & 0,21 & Deficiente \\
 \bottomrule
 \end{tabular}
@@ -492,7 +556,7 @@ recuperar texto, mientras que 15 FPS reduce la probabilidad de seleccionar
 un frame legible.
 
 La Figura~\ref{fig:limitaciones} muestra ejemplos de limitaciones observadas.
-Algunos falsos positivos se producen por objetos rectangulares o planos, 
+Algunos falsos positivos (FP) se producen por objetos rectangulares o planos, 
 como laterales de camiones, banderas ondeando o estructuras viales. También se 
 detectan señales de tránsito convencionales que comparten rasgos visuales 
 con letreros, pero que no pertenecen al dominio turístico. Estos casos 
@@ -521,14 +585,15 @@ Lagos, evaluados en cuatro configuraciones combinando resoluciones de
 720p y 1080p con tasas de captura de 15 FPS y 30 FPS, muestran que el 
 detector alcanza Precisión entre 0,77 y 0,91, Recall entre 0,50 y 0,74 
 y F1-score entre 0,61 y 0,76. El OCR obtuvo valores de CER entre 0,08 
-y 0,27, confirmando que la lectura de texto en movimiento es la etapa 
-más sensible del pipeline. En evaluación end-to-end, el sistema completó 
+y 0,27, confirmando que la lectura de texto en escenas naturales y en movimiento
+es la etapa más sensible del pipeline. En evaluación end-to-end, el pipeline completó 
 automáticamente el flujo para el 57,1\% de los letreros turísticos 
 correctamente detectados.
 
 Con el fin de facilitar la revisión y reproducibilidad de este trabajo, el repositorio asociado al artículo,
-que incluye el código empleados en esta investigación, se encuentra disponible
-en el siguiente enlace:
+que incluye el código principal empleado en esta investigación y en cuyo archivo README se encuentran los enlaces 
+a los videos utilizados para este artículo y a los videos de prueba empleados para ajustar el modelo, 
+se encuentra disponible en el siguiente enlace:
 
 \begin{center}
 \textbf{\url{https://github.com/robleaustral/geodetector}}
