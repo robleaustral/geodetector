@@ -285,7 +285,7 @@ y condiciones de iluminación.
 \subsection{OCR, taxonomía y geolocalización}
 
 Una vez seleccionada la detección de mayor confianza para cada letrero mediante el 
-tracking por apariencia implementado en la Etapa 2 de Implementación del
+tracking por apariencia aplicado en la Etapa 2 de Implementación del
 Modelo de Detección de Letreros, esta se recorta como ROI y se procesa mediante transformación a 
 escala de grises y thresholding, técnica utilizada para mejorar el contraste previo 
 al OCR \cite{thresholding-para-mejorar-ocr}. Dicho tracking opera sobre un fotograma 
@@ -364,12 +364,11 @@ V3 & Camino a Ensenada & 16:52 & 5:58 min & Tarde & Despejado & 50--70 km/h & 91
 
 Para la tarea de detección se calcularon las métricas de Precisión, Recall y F1-score 
 a partir de los verdaderos positivos (TP), falsos positivos (FP) y falsos negativos (FN), 
-utilizando como ground truth un conteo manual frame a frame realizado por el autor 
-\cite{ibm_ground_truth}, sobre la base de la taxonomía presentada en la 
+utilizando como ground truth \cite{ibm_ground_truth} un conteo manual frame a frame realizado durante la investigación, sobre la base de la taxonomía presentada en la 
 Tabla~\ref{tab:taxonomia}. Para evitar el conteo múltiple de un mismo letrero detectado 
 en frames consecutivos, se realizó un seguimiento visual manual de cada letrero de forma 
 individual a lo largo del video, asociando todas sus detecciones a una única instancia 
-para efectos de la evaluación. Estas métricas se definen según las ecuaciones 
+para efectos de la evaluación. Estas métricas se definen según las Ecuaciones 
 \ref{eq:precision}, \ref{eq:recall} y \ref{eq:f1}:
 
 \begin{equation}
@@ -593,7 +592,7 @@ correctamente detectados.
 Con el fin de facilitar la revisión y reproducibilidad de este trabajo, el repositorio asociado al artículo,
 que incluye el código principal empleado en esta investigación y en cuyo archivo README se encuentran los enlaces 
 a los videos utilizados para este artículo y a los videos de prueba empleados para ajustar el modelo, 
-se encuentra disponible en el siguiente enlace:
+disponible en el siguiente enlace:
 
 \begin{center}
 \textbf{\url{https://github.com/robleaustral/geodetector}}
