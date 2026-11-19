@@ -1,5 +1,4 @@
 \documentclass[conference]{IEEEtran}
-\IEEEoverridecommandlockouts
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -21,7 +20,11 @@
     \renewcommand{\tablename}{Tabla}
     \renewcommand{\figurename}{Figura}
     \renewcommand{\thetable}{\Roman{table}}
+    \renewcommand{\abstractname}{Abstract}
+    \renewcommand{\IEEEkeywordsname}{Index Terms}
 }
+\renewcommand{\abstractname}{Abstract}
+\renewcommand{\IEEEkeywordsname}{Index Terms}
 
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -30,7 +33,7 @@
 
 \begin{document}
 
-\title{GEODETECTOR: un pipeline híbrido basado en inteligencia artificial para la detección, clasificación y geolocalización automatizada de letreros turísticos en rutas y carreteras}
+\title{GEODETECTOR: A Hybrid AI-Based Pipeline for Automated Detection, Classification, and Geolocation of Tourist Signs on Rural Roads and Highways}
 
 \author{
 \IEEEauthorblockN{Felipe Córdova}
@@ -52,36 +55,37 @@ Valdivia, Chile \\
 \texttt{clazo@inf.uach.cl}}
 }
 
+\IEEEoverridecommandlockouts
+\IEEEpubid{\makebox[\columnwidth]{979-8-3195-1296-3/26/\$31.00~\copyright2026 IEEE \hfill}
+\hspace{\columnsep}\makebox[\columnwidth]{ }}
 \maketitle
 
 \begin{abstract}
-La información disponible en letreros turísticos instalados en rutas
-rurales y carreteras permanece escasamente integrada a sistemas digitales
-de inventario territorial. Este artículo presenta GEODETECTOR, un 
-pipeline híbrido que combina detección de letreros, sincronización 
-GPS, extracción de regiones de interés, reconocimiento óptico de caracteres, 
-clasificación semántica por taxonomía turística y visualización de resultados 
-georreferenciada. La propuesta fue evaluada con 
-videos capturados desde un vehículo en movimiento en tres rutas de la 
-Región de Los Lagos, Chile, bajo condiciones reales de iluminación, 
-clima y velocidad. El modelo fue entrenado mediante transfer learning 
-sobre un dataset propio de 2.000 imágenes etiquetadas de letreros 
-capturados principalmente en Chile y Argentina, publicado en IEEE DataPort. La
-evaluación experimental consideró cuatro configuraciones de captura, combinando 
-dos resoluciones (1080p y 720p) y dos tasas de frames (30 FPS y 15 FPS), 
-donde el modelo alcanzó Precisión entre 0,77 y 0,91, Recall 
-entre 0,50 y 0,74 y F1-score entre 0,61 y 0,76, mientras que el 
-reconocimiento de texto obtuvo un Character Error Rate entre 0,08 y 0,27. La
-evaluación end-to-end mostró que el pipeline completó 
-automáticamente la detección, lectura, clasificación y 
-georreferenciación del 57,1\% de los letreros turísticos correctamente 
-detectados en la configuración original de captura. Los resultados 
-evidencian la viabilidad de utilizar visión artificial para apoyar el 
-inventario de infraestructura turística vial en entornos no controlados.
+Information from tourist signs installed on rural routes and highways
+is rarely integrated into digital territorial-inventory systems. This
+article presents GEODETECTOR, a hybrid pipeline that combines sign
+detection, GPS synchronization, region-of-interest extraction, optical
+character recognition, semantic classification according to a tourist
+taxonomy, and georeferenced result visualization. The proposal was
+evaluated using videos captured from a moving vehicle on three routes in
+the Los Lagos Region, Chile, under real conditions of illumination,
+weather, and speed. The model was trained through transfer learning on a
+private dataset of 2,000 labeled sign images captured mainly in Chile and
+Argentina and published in IEEE DataPort. The experimental evaluation
+considered four capture configurations, combining two resolutions
+(1080p and 720p) and two frame rates (30 FPS and 15 FPS). The model
+achieved precision between 0.77 and 0.91, recall between 0.50 and 0.74,
+and F1-score between 0.61 and 0.76, while text recognition obtained a
+Character Error Rate between 0.08 and 0.27. The end-to-end evaluation
+showed that the pipeline automatically completed detection, reading,
+classification, and georeferencing for 57.1\% of the tourist signs
+correctly detected in the original capture configuration. The results
+demonstrate the feasibility of using computer vision to support the
+inventory of roadside tourist infrastructure in uncontrolled environments.
 \end{abstract}
 
 \begin{IEEEkeywords}
-visión artificial, YOLO, transfer learning, OCR, georreferenciación, letreros turísticos, inteligencia artificial, rutas rurales.
+Computer vision, YOLO, transfer learning, OCR, georeferencing, tourist signs, artificial intelligence, rural roads.
 \end{IEEEkeywords}
 
 \section{Introducción}
@@ -413,7 +417,8 @@ utilizadas según el valor de CER obtenido.
 \label{tab:cer_interpretacion}
 \centering
 \footnotesize
-\begin{tabular}{cc p{3.6cm}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{cc p{3.1cm}}
 \toprule
 Rango de CER & Interpretación & Descripción \\
 \midrule
